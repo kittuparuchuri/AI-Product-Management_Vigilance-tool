@@ -104,6 +104,11 @@ def run_report(args):
     windows, flagged = _compute(data)
     _print_console(windows, flagged, source)
 
+    if "alert" in opts:
+        from .alerting import send_alerts
+        print()
+        send_alerts(flagged)
+
     if "csv" in opts:
         from .outputs import write_csv
         write_csv(windows, flagged, "output/vigilance.csv")
@@ -173,9 +178,14 @@ def main(argv=None):
     if argv and argv[0] == "report":
         return run_report(argv[1:])
 
+    if argv and argv[0] == "friction-demo":
+        from .friction import friction_demo
+        return friction_demo()
+
     if not argv:
         print("Usage:")
-        print("  python -m vigilance report --source simulate [--html] [--csv]")
+        print("  python -m vigilance report --source simulate [--html] [--csv] [--alert]")
+        print("  python -m vigilance friction-demo")
         print("  python -m vigilance report --source github --owner OWNER --repo REPO --max-prs N")
         print("  python -m vigilance <owner>/<repo> [<owner>/<repo> ...]")
         return 1
