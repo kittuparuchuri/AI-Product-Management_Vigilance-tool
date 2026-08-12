@@ -21,26 +21,26 @@ def _parse_flags(args):
     return opts
 
 
-def _print_report(data, source):
+def _compute(data):
     from .scoring import (
         score_reviews,
         compute_vigilance_scores,
         flag_declining_reviewers,
     )
-
     scored = []
     for reviews, pr_meta in data:
         scored += score_reviews(reviews, pr_meta)
-
     windows = compute_vigilance_scores(scored)
     flagged = {d.reviewer: d for d in flag_declining_reviewers(scored)}
+    return windows, flagged
 
+
+def _print_console(windows, flagged, source):
     print("Vigilance report  (source: " + source + ")")
     print("=" * 60)
     if not windows:
         print("(no human reviews to score)")
         return
-
     for reviewer in sorted(windows):
         scores = [round(s) for s in windows[reviewer]]
         first, latest = scores[0], scores[-1]
@@ -50,7 +50,6 @@ def _print_report(data, source):
             status = "ok"
         print("{:22} {:30} {:>3} -> {:<3}  {}".format(
             reviewer, str(scores), first, latest, status))
-
     print()
     names = ", ".join(sorted(flagged)) if flagged else "(none)"
     print("Flagged reviewers: " + names)
@@ -102,7 +101,19 @@ def run_report(args):
         print("Unknown source " + repr(source) + ". Use simulate or github.")
         return 1
 
-    _print_report(data, source)
+    windows, flagged = _compute(data)
+    _print_console(windows, flagged, source)
+
+    if "csv" in opts:
+        from .outputs import write_csv
+        write_csv(windows, flagged, "output/vigilance.csv")
+        print("Wrote output/vigilance.csv")
+
+    if "html" in opts:
+        from .outputs import write_html
+        write_html(windows, flagged, "output/vigilance.html", source)
+        print("Wrote output/vigilance.html")
+
     return 0
 
 
@@ -164,7 +175,7 @@ def main(argv=None):
 
     if not argv:
         print("Usage:")
-        print("  python -m vigilance report --source simulate")
+        print("  python -m vigilance report --source simulate [--html] [--csv]")
         print("  python -m vigilance report --source github --owner OWNER --repo REPO --max-prs N")
         print("  python -m vigilance <owner>/<repo> [<owner>/<repo> ...]")
         return 1
