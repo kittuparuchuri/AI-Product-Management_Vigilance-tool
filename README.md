@@ -165,6 +165,8 @@ The dashboard shows a per-reviewer trend line (red for a flagged/declining
 reviewer, green for a steady one), a flagged panel, and a full data table. Open
 it in any browser.
 
+![Vigilance dashboard](docs/dashboard.png)
+
 ---
 
 ## Deploying it (GitHub Actions)
