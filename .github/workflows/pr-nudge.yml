@@ -1,0 +1,21 @@
+name: Reviewer Vigilance - PR Nudge
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  nudge:
+    if: ${{ github.event.review.state == ''approved'' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gentle nudge on approval
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: >
+          gh pr comment "$PR_URL"
+          --body "Thanks for reviewing! Gentle reminder: on high-risk changes (auth, payments, large diffs), jot a quick note on what you checked -- it beats a silent approve. Automated nudge; no action needed."

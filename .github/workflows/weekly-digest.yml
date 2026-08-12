@@ -1,0 +1,80 @@
+name: Reviewer Vigilance - Weekly Digest
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 9 * * 1"
+
+permissions:
+  contents: read
+  issues: write
+  pages: write
+  id-token: write
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate dashboard and CSV
+        run: python -m vigilance report --source simulate --html --csv
+
+      - name: Build Pages site
+        run: |
+          mkdir -p site
+          cp output/vigilance.html site/index.html
+          cp output/vigilance.csv site/vigilance.csv
+
+      - name: Upload dashboard as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vigilance-dashboard
+          path: output
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        continue-on-error: true
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Create digest issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PAGE_URL: ${{ steps.deploy.outputs.page_url }}
+        run: |
+          python -m vigilance report --source simulate > digest.txt
+          {
+            echo "Automated weekly reviewer-vigilance digest."
+            echo ""
+            if [ -n "$PAGE_URL" ]; then
+              echo "Dashboard: $PAGE_URL"
+            else
+              echo "Dashboard: download the vigilance-dashboard artifact from this run."
+            fi
+            echo ""
+            echo '```'
+            cat digest.txt
+            echo '```'
+          } > issue-body.md
+          gh issue create --title "Reviewer Vigilance - Weekly Digest" --body-file issue-body.md
+
+      - name: Slack ping (dry-run if no webhook)
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: python -m vigilance report --source simulate --alert
