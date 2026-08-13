@@ -9,10 +9,10 @@ permissions:
 
 jobs:
   nudge:
-    if: ${{ github.event.review.state == ''approved'' }}
     runs-on: ubuntu-latest
     steps:
       - name: Gentle nudge on approval
+        if: ${{ github.event.review.state == ''approved'' }}
         env:
           GH_TOKEN: ${{ github.token }}
           PR_URL: ${{ github.event.pull_request.html_url }}
